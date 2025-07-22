@@ -7,11 +7,9 @@ void main() {
 }
 
 class MyApp extends StatefulWidget {
-  // Thêm const và super.key vào constructor
   const MyApp({super.key});
 
   @override
-  // Sửa kiểu trả về thành State<MyApp>
   State<MyApp> createState() => _MyAppState();
 }
 
@@ -41,18 +39,15 @@ class HomePage extends StatefulWidget {
   final Function(bool) onThemeChanged;
   final ThemeMode currentThemeMode;
 
-  // Thêm const và super.key vào constructor
   const HomePage({super.key, required this.onThemeChanged, required this.currentThemeMode});
 
   @override
-  // Sửa kiểu trả về thành State<HomePage>
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
 
-  // Cải tiến: Thêm danh sách tiêu đề cho AppBar
   final List<String> _appBarTitles = const [
     'Lịch Flutter',
     'To Do List',
@@ -60,8 +55,39 @@ class _HomePageState extends State<HomePage> {
     'Cài đặt'
   ];
 
-  // Logic cũ để tạo các trang vẫn giữ nguyên
-  // (Chúng ta sẽ tạo nó trong build() để state luôn mới)
+  // Phương thức hiển thị menu lựa chọn khi nhấn nút dấu cộng
+  // Phương thức hiển thị menu lựa chọn
+  void _showAddOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext bc) {
+        return SafeArea(
+          child: Wrap(
+            children: <Widget>[
+              ListTile(
+                // Sửa ở đây
+                leading: const Icon(Icons.check_circle_outline),
+                title: const Text('Tạo To Do mới'),
+                onTap: () {
+                  print('Chức năng tạo To Do sẽ được thêm ở đây.');
+                  Navigator.of(context).pop();
+                },
+              ),
+              ListTile(
+                // Sửa ở đây
+                leading: const Icon(Icons.note_alt_outlined),
+                title: const Text('Tạo Ghi chú mới'),
+                onTap: () {
+                  print('Chức năng tạo Ghi chú sẽ được thêm ở đây.');
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,7 +103,6 @@ class _HomePageState extends State<HomePage> {
     ];
 
     return Scaffold(
-
       body: pages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
@@ -85,14 +110,18 @@ class _HomePageState extends State<HomePage> {
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
         items: const [
+          // Sửa các Icon ở đây thành tên tiếng Anh chuẩn
           BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Lịch'),
-          BottomNavigationBarItem(icon: Icon(Icons.folder), label: 'To do'),
-          BottomNavigationBarItem(icon: Icon(Icons.star), label: 'Note'),
+          BottomNavigationBarItem(icon: Icon(Icons.check_circle_outline), label: 'Nhiệm vụ'),
+          BottomNavigationBarItem(icon: Icon(Icons.note_alt_outlined), label: 'Ghi chú'),
           BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Cài đặt'),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () {
+          // Gọi phương thức để hiển thị menu
+          _showAddOptions(context);
+        },
         backgroundColor: Colors.green,
         child: const Icon(Icons.add),
       ),
