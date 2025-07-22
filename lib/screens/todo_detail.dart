@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class TodoDetailScreen extends StatefulWidget {
   const TodoDetailScreen({super.key});
@@ -20,6 +21,21 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
   DateTime _endTime = DateTime.now().add(const Duration(hours: 1));
 
   @override
+  void initState() {
+    super.initState();
+    _loadUserId();
+  }
+
+  int? _userId;
+
+  void _loadUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _userId = prefs.getInt('userId');
+    });
+  }
+
+  @override
   void dispose() {
     // Quan trọng: Hủy controller
     _titleController.dispose();
@@ -29,6 +45,13 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
 
   // 4. Cập nhật hàm gọi API để lấy dữ liệu động
   void _saveTodo() async {
+    if (_userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không tìm thấy người')),
+      );
+      return;
+    }
+
     final title = _titleController.text;
     final description = _descriptionController.text;
 
@@ -43,10 +66,10 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
     final response = await http.post(
       Uri.parse("http://172.16.7.146:5056/Todo/create"),
       headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJhZG1pbkBnbWFpbC5jb20iLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiVGVzdFVzZXIiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJleHAiOjE3NTMyMjIyMDUsImlzcyI6InJlbWluZGVyIiwiYXVkIjoicmVtaW5kZXItdXNlciJ9.tB5_jA8seIkDswvdTYsTxYJ0ljuqELCSzL4i5YgAJtw",
+        "Content-Type": "application/json"
       },
       body: jsonEncode({
+        "userId": _userId,
         "title": title,
         "description": description,
         "startTime": _startTime.toIso8601String(), // Chuyển sang định dạng chuỗi ISO

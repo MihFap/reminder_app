@@ -1,42 +1,57 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsScreen extends StatelessWidget {
   final Function(bool) onThemeChanged;
   final ThemeMode currentThemeMode;
+  final VoidCallback onLogout;
 
-  // Thêm 'const' và 'super.key' vào constructor
   const SettingsScreen({
     super.key,
     required this.onThemeChanged,
     required this.currentThemeMode,
+    required this.onLogout, // thêm dòng này
   });
+
+  Future<void> _logout(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', false);
+
+    // QUAN TRỌNG: tên route phải là '/login' như đã khai báo ở bước trên
+    Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+  }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // Thêm 'const'
         title: const Text('Cài đặt'),
       ),
       body: Padding(
-        // Thêm 'const'
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Thêm 'const'
             const Text(
               'Chế độ giao diện:',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             SwitchListTile(
-              // Thêm 'const'
               title: const Text('Giao diện tối'),
               value: currentThemeMode == ThemeMode.dark,
-              // Đơn giản hóa callback
               onChanged: onThemeChanged,
             ),
-            // Các cài đặt khác có thể thêm ở đây
+            const SizedBox(height: 24),
+
+            const Divider(),
+
+            // Nút đăng xuất
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text('Đăng xuất', style: TextStyle(color: Colors.red)),
+              onTap: onLogout, // gọi sự kiện
+            ),
           ],
         ),
       ),
