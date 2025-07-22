@@ -4,7 +4,8 @@ import 'screens/settings_screen.dart';
 import 'screens/add_todo_screen.dart'; // Import trang cài đặt
 import 'package:intl/date_symbol_data_local.dart';
 import 'screens/add_note_screen.dart';
-
+import 'screens/note_detail.dart';
+import 'screens/todo_detail.dart';
 
 void main() async { // 1. Thêm 'async'
   // 2. Đảm bảo Flutter đã được khởi tạo
@@ -70,26 +71,37 @@ class _HomePageState extends State<HomePage> {
   void _showAddOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
+      ),
       builder: (BuildContext bc) {
         return SafeArea(
           child: Wrap(
             children: <Widget>[
               ListTile(
-                // Sửa ở đây
                 leading: const Icon(Icons.check_circle_outline),
-                title: const Text('Tạo To Do mới'),
+                title: const Text('Tạo Nhiệm vụ mới'),
                 onTap: () {
-                  print('Chức năng tạo To Do sẽ được thêm ở đây.');
+                  // Đóng menu dưới
                   Navigator.of(context).pop();
+                  // SỬA Ở ĐÂY: Điều hướng đến trang TodoDetailScreen
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const TodoDetailScreen()),
+                  );
                 },
               ),
               ListTile(
-                // Sửa ở đây
                 leading: const Icon(Icons.note_alt_outlined),
                 title: const Text('Tạo Ghi chú mới'),
                 onTap: () {
-                  print('Chức năng tạo Ghi chú sẽ được thêm ở đây.');
+                  // Đóng menu dưới
                   Navigator.of(context).pop();
+                  // Điều hướng đến trang NoteDetailScreen
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const NoteDetailScreen()),
+                  );
                 },
               ),
             ],

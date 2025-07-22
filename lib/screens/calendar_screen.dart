@@ -45,7 +45,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               SizedBox(width: 10),
               Text(
                 "${_focusedDay.month}/${_focusedDay.year}",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 25),
               ),
               SizedBox(width: 10),
               IconButton(
