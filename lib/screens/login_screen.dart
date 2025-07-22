@@ -51,8 +51,7 @@ class LoginScreen extends StatelessWidget {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Đăng nhập thất bại (${response.statusCode})')),
+          SnackBar(content: Text('Đăng nhập thất bại (${response.statusCode})')),
         );
       }
     } catch (e) {
@@ -62,24 +61,6 @@ class LoginScreen extends StatelessWidget {
     }
   }
 
-  Widget _buildInputField(IconData icon, String label, TextEditingController controller, {bool obscure = false}) {
-    return TextField(
-      controller: controller,
-      obscureText: obscure,
-      style: const TextStyle(color: Colors.black),
-      decoration: InputDecoration(
-        prefixIcon: Icon(icon, color: Colors.grey),
-        labelText: label,
-        labelStyle: const TextStyle(color: Colors.black),
-        filled: true,
-        fillColor: Colors.grey[200],
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-      ),
-    );
-  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -92,7 +73,10 @@ class LoginScreen extends StatelessWidget {
               fit: BoxFit.cover,
             ),
           ),
-
+          // Lớp mờ overlay nếu muốn (tuỳ chọn)
+          // Container(
+          //   color: Colors.black.withOpacity(0.3),
+          // ),
           // Nội dung chính
           SafeArea(
             child: Center(
@@ -102,8 +86,7 @@ class LoginScreen extends StatelessWidget {
                   children: [
                     const SizedBox(height: 30),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 30, vertical: 40),
+                      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 40),
                       margin: const EdgeInsets.symmetric(horizontal: 20),
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -117,32 +100,53 @@ class LoginScreen extends StatelessWidget {
                         ],
                       ),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Center(
-                            child: Text(
-                              'Đăng Nhập',
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
+                          const Text(
+                            'Đăng Nhập',
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
                             ),
                           ),
                           const SizedBox(height: 8),
-                          const Center(
-                            child: Text(
-                              'Nhấn đăng nhập để tiếp tục',
-                              style: TextStyle(color: Colors.grey),
+                          const Text(
+                            'Nhấn đăng nhập để tiếp tục',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                          const SizedBox(height: 30),
+                          const Text('EMAIL', style: TextStyle(color: Colors.black)),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: emailController,
+                            decoration: InputDecoration(
+                              prefixIcon: const Icon(Icons.email_outlined),
+                              filled: true,
+                              fillColor: Colors.grey[200],
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
                             ),
                           ),
-
-                          // EMAIL
-                          const SizedBox(height: 40),
-                          _buildInputField(Icons.email, 'EMAIL', emailController),
                           const SizedBox(height: 20),
-                          _buildInputField(Icons.lock, 'PASSWORD', passwordController, obscure: true),
-                          const SizedBox(height: 40),
+                          const Text('PASSWORD', style: TextStyle(color: Colors.black)),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: passwordController,
+                            obscureText: true,
+                            decoration: InputDecoration(
+                              prefixIcon: const Icon(Icons.lock_outline),
+                              filled: true,
+                              fillColor: Colors.grey[200],
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 30),
                           SizedBox(
                             width: double.infinity,
                             height: 50,
@@ -157,8 +161,7 @@ class LoginScreen extends StatelessWidget {
                               child: const Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Text('ĐĂNG NHẬP', style: TextStyle(
-                                      fontSize: 16, color: Colors.black)),
+                                  Text('ĐĂNG NHẬP', style: TextStyle(fontSize: 16, color: Colors.black)),
                                   SizedBox(width: 10),
                                   Icon(Icons.arrow_forward),
                                 ],
@@ -172,20 +175,17 @@ class LoginScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text("Bạn chưa có tài khoản? ",
-                            style: TextStyle(color: Colors.black)),
+                        const Text("Bạn chưa có tài khoản? ", style: TextStyle(color: Colors.black)),
                         GestureDetector(
                           onTap: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(
-                                  builder: (_) => RegisterScreen()),
+                              MaterialPageRoute(builder: (_) => RegisterScreen()),
                             );
                           },
                           child: const Text(
                             'Đăng Ký',
-                            style: TextStyle(color: Colors.green,
-                                fontWeight: FontWeight.bold),
+                            style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ],

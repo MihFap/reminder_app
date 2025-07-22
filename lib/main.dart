@@ -9,10 +9,17 @@ import 'screens/todo_detail.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+
+// Import đã thêm
+import 'notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('vi_VN', null);
+
+  // Dòng đã thêm: Khởi tạo NotificationService
+  await NotificationService().init();
 
   final prefs = await SharedPreferences.getInstance();
   final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
@@ -30,8 +37,18 @@ class MyApp extends StatelessWidget {
       title: 'Lịch Flutter',
       theme: ThemeData.light(),
       darkTheme: ThemeData.dark(),
-      home: LoginScreen(), // Khởi động vào màn hình đăng nhập
       debugShowCheckedModeBanner: false,
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('vi', 'VN'), // Hỗ trợ Tiếng Việt
+        Locale('en', 'US'), // Hỗ trợ Tiếng Anh
+      ],
+      locale: const Locale('vi', 'VN'), // Đặt ngôn ngữ mặc định
+      home: LoginScreen(), // Khởi động vào màn hình đăng nhập
     );
   }
 }
@@ -61,6 +78,16 @@ class _MyAppWithHomeState extends State<MyAppWithHome> {
       theme: ThemeData.light(),
       darkTheme: ThemeData.dark(),
       debugShowCheckedModeBanner: false,
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('vi', 'VN'), // Hỗ trợ Tiếng Việt
+        Locale('en', 'US'), // Hỗ trợ Tiếng Anh
+      ],
+      locale: const Locale('vi', 'VN'), // Đặt ngôn ngữ mặc định
       home: HomePage(
         onThemeChanged: _toggleTheme,
         currentThemeMode: _themeMode,
@@ -86,13 +113,6 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
-
-  final List<String> _appBarTitles = const [
-    'Lịch Flutter',
-    'To Do List',
-    'Ghi chú',
-    'Cài đặt'
-  ];
 
   void _showAddOptions(BuildContext context) {
     showModalBottomSheet(
@@ -141,9 +161,10 @@ class _HomePageState extends State<HomePage> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isLoggedIn', false);
 
-    // Thoát về LoginScreen
+    if (!mounted) return;
+
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => LoginScreen()),
+      MaterialPageRoute(builder: (context) => const MyApp()),
           (route) => false,
     );
   }
@@ -157,7 +178,7 @@ class _HomePageState extends State<HomePage> {
       SettingsScreen(
         onThemeChanged: widget.onThemeChanged,
         currentThemeMode: widget.currentThemeMode,
-        onLogout: _logout, // truyền hàm đăng xuất vào settings
+        onLogout: _logout,
       ),
     ];
 
@@ -166,6 +187,7 @@ class _HomePageState extends State<HomePage> {
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.green,
+        unselectedItemColor: Theme.of(context).textTheme.bodySmall?.color,
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
         items: const [
@@ -178,6 +200,7 @@ class _HomePageState extends State<HomePage> {
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddOptions(context),
         backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
         child: const Icon(Icons.add),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,

@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'dart:convert';
+import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
+// Đảm bảo đường dẫn này đúng với cấu trúc dự án của bạn
+import 'package:reminder_app/notification_service.dart';
 
 class TodoDetailScreen extends StatefulWidget {
   const TodoDetailScreen({super.key});
@@ -11,22 +16,33 @@ class TodoDetailScreen extends StatefulWidget {
   State<TodoDetailScreen> createState() => _TodoDetailScreenState();
 }
 
-class _TodoDetailScreenState extends State<TodoDetailScreen> {
-  // 1. Thêm các Controller để lấy dữ liệu
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController(); // Controller cho miêu tả
 
-  bool _isAllDay = false;
+class _TodoDetailScreenState extends State<TodoDetailScreen> {
+  final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
+
   DateTime _startTime = DateTime.now();
   DateTime _endTime = DateTime.now().add(const Duration(hours: 1));
+  int? _userId;
+
+  Duration? _selectedReminder;
+  final Map<String, Duration?> _reminderOptions = {
+    'Không có': null, // <-- Dùng null để đại diện cho không có lời nhắc
+    'Khi bắt đầu': Duration.zero, // <-- Giữ nguyên cho tùy chọn "Khi bắt đầu"
+    '5 phút trước': const Duration(minutes: 5),
+    '15 phút trước': const Duration(minutes: 15),
+    '30 phút trước': const Duration(minutes: 30),
+    '1 giờ trước': const Duration(hours: 1),
+    '1 ngày trước': const Duration(days: 1),
+  };
 
   @override
   void initState() {
     super.initState();
+    initializeDateFormatting('vi_VN', null);
     _loadUserId();
+    _selectedReminder = _reminderOptions['15 phút trước'];
   }
-
-  int? _userId;
 
   void _loadUserId() async {
     final prefs = await SharedPreferences.getInstance();
@@ -37,17 +53,16 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
 
   @override
   void dispose() {
-    // Quan trọng: Hủy controller
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
 
-  // 4. Cập nhật hàm gọi API để lấy dữ liệu động
   void _saveTodo() async {
     if (_userId == null) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không tìm thấy người')),
+        const SnackBar(content: Text('Không tìm thấy người dùng')),
       );
       return;
     }
@@ -56,143 +71,95 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
     final description = _descriptionController.text;
 
     if (title.isEmpty) {
-      // Hiển thị thông báo nếu tiêu đề trống
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng nhập tiêu đề cho nhiệm vụ.')),
       );
       return;
     }
 
+    if (_endTime.isBefore(_startTime)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lỗi: Thời gian kết thúc phải sau thời gian bắt đầu.')),
+      );
+      return;
+    }
+
     final response = await http.post(
       Uri.parse("http://172.16.7.146:5056/Todo/create"),
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "userId": _userId,
         "title": title,
         "description": description,
-        "startTime": _startTime.toIso8601String(), // Chuyển sang định dạng chuỗi ISO
+        "startTime": _startTime.toIso8601String(),
         "endTime": _endTime.toIso8601String()
       }),
     );
 
     if (response.statusCode == 200 && mounted) {
       print("✅ Tạo thành công: ${response.body}");
+
+      if (_selectedReminder != null && _selectedReminder != Duration.zero) {
+        final notificationTime = _startTime.subtract(_selectedReminder!);
+        if (notificationTime.isAfter(DateTime.now())) {
+          final int notificationId = Random().nextInt(100000);
+          await NotificationService().scheduleNotification(
+            id: notificationId,
+            title: 'Sắp đến giờ làm nhiệm vụ!',
+            body: title,
+            scheduledTime: notificationTime,
+          );
+          print("✅ Đã lên lịch thông báo lúc: $notificationTime");
+        } else {
+          print("⚠️ Thời gian nhắc nhở đã ở trong quá khứ, không lên lịch.");
+        }
+      }
+
       Navigator.of(context).pop();
     } else {
       print("❌ Lỗi: ${response.statusCode} - ${response.body}");
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0, top: 8, bottom: 8),
-            child: ElevatedButton(
-              onPressed: _saveTodo, // 3. Gọi hàm _saveTodo khi nhấn Lưu
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              ),
-              child: const Text('Lưu'),
-            ),
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16.0),
-        children: [
-          // 2. Gán controller cho các TextField
-          TextField(
-            controller: _titleController,
-            decoration: const InputDecoration(
-              hintText: 'Thêm tiêu đề',
-              border: InputBorder.none,
-              hintStyle: TextStyle(fontSize: 22),
-            ),
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          ),
-          const Divider(),
-          _buildTimeSection(),
-          const Divider(),
-          _buildReminderSection(),
-          const Divider(),
-          _buildOptionRow(
-            icon: Icons.repeat,
-            title: 'Lặp lại',
-            subtitle: 'Không có',
-            trailing: const Icon(Icons.chevron_right),
-          ),
-          const Divider(),
-          // Sử dụng TextField thay vì _buildOptionRow cho phần miêu tả
-          TextField(
-            controller: _descriptionController,
-            decoration: const InputDecoration(
-              icon: Icon(Icons.description_outlined),
-              hintText: 'Thêm miêu tả',
-              border: InputBorder.none,
-            ),
-            maxLines: null, // Cho phép nhập nhiều dòng
-          ),
-        ],
-      ),
-    );
-  }
+  Future<void> _selectDate(BuildContext context, bool isStart) async {
+    final DateTime initialDate = isStart ? _startTime : _endTime;
+    final DateTime firstDate = DateTime.now().subtract(const Duration(days: 365));
+    final DateTime lastDate = DateTime.now().add(const Duration(days: 365 * 5));
 
-  // Các hàm build khác giữ nguyên như trước...
-  Widget _buildTimeSection() {
-    return Column(
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.access_time),
-            const SizedBox(width: 16),
-            const Text('Cả ngày'),
-            const Spacer(),
-            Switch(value: _isAllDay, onChanged: (value) => setState(() => _isAllDay = value)),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            const Icon(Icons.watch_later_outlined),
-            const SizedBox(width: 16),
-            GestureDetector(
-              onTap: () => _showCustomTimePicker(context, true),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(DateFormat('E, d MMM', 'vi_VN').format(_startTime), style: const TextStyle(fontSize: 12)),
-                  Text(DateFormat('HH:mm').format(_startTime), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ],
-              ),
-            ),
-            const Spacer(),
-            const Text('/'),
-            const Spacer(),
-            GestureDetector(
-              onTap: () => _showCustomTimePicker(context, false),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(DateFormat('E, d MMM', 'vi_VN').format(_endTime), style: const TextStyle(fontSize: 12)),
-                  Text(DateFormat('HH:mm').format(_endTime), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ],
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      locale: const Locale('vi', 'VN'),
     );
+
+    if (pickedDate != null) {
+      setState(() {
+        if (isStart) {
+          _startTime = DateTime(
+            pickedDate.year,
+            pickedDate.month,
+            pickedDate.day,
+            _startTime.hour,
+            _startTime.minute,
+          );
+          if (_endTime.isBefore(_startTime)) {
+            _endTime = _startTime.add(const Duration(hours: 1));
+          }
+        } else {
+          _endTime = DateTime(
+            pickedDate.year,
+            pickedDate.month,
+            pickedDate.day,
+            _endTime.hour,
+            _endTime.minute,
+          );
+        }
+      });
+    }
   }
 
   void _showCustomTimePicker(BuildContext context, bool isStartTime) {
@@ -249,15 +216,21 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
             TextButton(
               onPressed: () {
                 setState(() {
-                  final now = DateTime.now();
-                  final newTime = DateTime(now.year, now.month, now.day, selectedHour, selectedMinute);
                   if (isStartTime) {
-                    _startTime = newTime;
+                    final newStartTime = DateTime(_startTime.year, _startTime.month, _startTime.day, selectedHour, selectedMinute);
+                    _startTime = newStartTime;
                     if (_endTime.isBefore(_startTime.add(const Duration(hours: 1)))) {
                       _endTime = _startTime.add(const Duration(hours: 1));
                     }
                   } else {
-                    _endTime = newTime;
+                    final newEndTime = DateTime(_endTime.year, _endTime.month, _endTime.day, selectedHour, selectedMinute);
+                    if (newEndTime.isAfter(_startTime)) {
+                      _endTime = newEndTime;
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Thời gian kết thúc phải sau thời gian bắt đầu.')),
+                      );
+                    }
                   }
                 });
                 Navigator.of(context).pop();
@@ -270,57 +243,134 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
     );
   }
 
-  Widget _buildReminderSection() {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0, top: 8, bottom: 8),
+            child: ElevatedButton(
+              onPressed: _saveTodo,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              child: const Text('Lưu'),
+            ),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16.0),
+        children: [
+          TextField(
+            controller: _titleController,
+            decoration: const InputDecoration(
+              hintText: 'Thêm tiêu đề',
+              border: InputBorder.none,
+              hintStyle: TextStyle(fontSize: 22),
+            ),
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+          const Divider(),
+          _buildTimeSection(),
+          const Divider(),
+          _buildReminderSection(),
+          const Divider(),
+          TextField(
+            controller: _descriptionController,
+            decoration: const InputDecoration(
+              icon: Icon(Icons.description_outlined),
+              hintText: 'Thêm miêu tả',
+              border: InputBorder.none,
+            ),
+            maxLines: null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimeSection() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            const Icon(Icons.notifications_outlined),
-            const SizedBox(width: 16),
-            const Text('Lời nhắc'),
-            const Spacer(),
-            Text('Thêm >', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color)),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceVariant,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              const Text('15 phút trước'),
-              const Spacer(),
-              Icon(Icons.close, size: 16, color: Theme.of(context).iconTheme.color),
-            ],
-          ),
-        ),
+        const Text("Bắt đầu"),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 16),
-            const SizedBox(width: 8),
-            const Text('Lời nhắc không hoạt động. Vui lòng cấp quyền thông báo', style: TextStyle(fontSize: 12)),
-          ],
-        )
+        _buildDateTimeRow(isStart: true),
+        const SizedBox(height: 16),
+        const Text("Kết thúc"),
+        const SizedBox(height: 8),
+        _buildDateTimeRow(isStart: false),
       ],
     );
   }
 
-  Widget _buildOptionRow({
-    required IconData icon,
-    required String title,
-    String? subtitle,
-    Widget? trailing,
-  }) {
+  Widget _buildDateTimeRow({required bool isStart}) {
+    DateTime displayedTime = isStart ? _startTime : _endTime;
+    String dateText = DateFormat('E, dd/MM/yyyy', 'vi_VN').format(displayedTime);
+    String timeText = DateFormat('HH:mm').format(displayedTime);
+
+    return Row(
+      children: [
+        Expanded(
+          child: InkWell(
+            onTap: () => _selectDate(context, isStart),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(dateText),
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        InkWell(
+          onTap: () => _showCustomTimePicker(context, isStart),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              timeText,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildReminderSection() {
     return ListTile(
-      leading: Icon(icon),
-      title: Text(title),
-      subtitle: subtitle != null ? Text(subtitle) : null,
-      trailing: trailing,
       contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.notifications_outlined),
+      title: const Text('Lời nhắc'),
+      trailing: DropdownButton<Duration>(
+        value: _selectedReminder,
+        underline: Container(), // Bỏ gạch chân
+        onChanged: (Duration? newValue) {
+          setState(() {
+            _selectedReminder = newValue;
+          });
+        },
+        items: _reminderOptions.entries.map<DropdownMenuItem<Duration>>((entry) {
+          return DropdownMenuItem<Duration>(
+            value: entry.value,
+            child: Text(entry.key),
+          );
+        }).toList(),
+      ),
     );
   }
 }

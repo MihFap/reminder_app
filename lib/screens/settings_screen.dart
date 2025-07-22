@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:reminder_app/notification_service.dart';
 
 class SettingsScreen extends StatelessWidget {
   final Function(bool) onThemeChanged;
@@ -51,6 +52,18 @@ class SettingsScreen extends StatelessWidget {
               leading: const Icon(Icons.logout, color: Colors.red),
               title: const Text('Đăng xuất', style: TextStyle(color: Colors.red)),
               onTap: onLogout, // gọi sự kiện
+            ),
+
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue, // Nút màu xanh cho dễ phân biệt
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                // Gọi hàm test khi nhấn nút
+                NotificationService().showTestNotification();
+              },
+              child: const Text('Gửi thông báo Test ngay'),
             ),
           ],
         ),
