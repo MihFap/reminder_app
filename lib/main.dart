@@ -1,8 +1,19 @@
 import 'package:flutter/material.dart';
 import 'screens/calendar_screen.dart';
-import 'screens/settings_screen.dart'; // Import trang cài đặt
+import 'screens/settings_screen.dart';
+import 'screens/add_todo_screen.dart'; // Import trang cài đặt
+import 'package:intl/date_symbol_data_local.dart';
+import 'screens/add_note_screen.dart';
 
-void main() {
+
+void main() async { // 1. Thêm 'async'
+  // 2. Đảm bảo Flutter đã được khởi tạo
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // 3. Khởi tạo dữ liệu ngôn ngữ 'vi_VN' cho package intl
+  await initializeDateFormatting('vi_VN', null);
+
+  // Chạy ứng dụng như bình thường
   runApp(const MyApp());
 }
 
@@ -55,8 +66,7 @@ class _HomePageState extends State<HomePage> {
     'Cài đặt'
   ];
 
-  // Phương thức hiển thị menu lựa chọn khi nhấn nút dấu cộng
-  // Phương thức hiển thị menu lựa chọn
+
   void _showAddOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -94,8 +104,8 @@ class _HomePageState extends State<HomePage> {
     // Tạo danh sách pages trong build để đảm bảo state luôn được cập nhật
     final List<Widget> pages = [
       CalendarScreen(),
-      const Center(child: Text('To do')),
-      const Center(child: Text('Note')),
+      AddTodoScreen(),
+      AddNoteScreen(),
       SettingsScreen(
         onThemeChanged: widget.onThemeChanged,
         currentThemeMode: widget.currentThemeMode,
