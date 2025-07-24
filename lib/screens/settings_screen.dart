@@ -54,17 +54,7 @@ class SettingsScreen extends StatelessWidget {
               onTap: onLogout, // gọi sự kiện
             ),
 
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue, // Nút màu xanh cho dễ phân biệt
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () {
-                // Gọi hàm test khi nhấn nút
-                NotificationService().showTestNotification();
-              },
-              child: const Text('Gửi thông báo Test ngay'),
-            ),
+
           ],
         ),
       ),

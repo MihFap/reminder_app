@@ -5,17 +5,17 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-
-// Đảm bảo đường dẫn này đúng với cấu trúc dự án của bạn
 import 'package:reminder_app/notification_service.dart';
+import 'package:reminder_app/model/todo_model.dart';
 
 class TodoDetailScreen extends StatefulWidget {
-  const TodoDetailScreen({super.key});
+  final Todo? todoToEdit;
+
+  const TodoDetailScreen({super.key, this.todoToEdit});
 
   @override
   State<TodoDetailScreen> createState() => _TodoDetailScreenState();
 }
-
 
 class _TodoDetailScreenState extends State<TodoDetailScreen> {
   final _titleController = TextEditingController();
@@ -25,10 +25,12 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
   DateTime _endTime = DateTime.now().add(const Duration(hours: 1));
   int? _userId;
 
+  bool get _isEditing => widget.todoToEdit != null;
+
   Duration? _selectedReminder;
   final Map<String, Duration?> _reminderOptions = {
-    'Không có': null, // <-- Dùng null để đại diện cho không có lời nhắc
-    'Khi bắt đầu': Duration.zero, // <-- Giữ nguyên cho tùy chọn "Khi bắt đầu"
+    'Không có': null,
+    'Khi bắt đầu': Duration.zero,
     '5 phút trước': const Duration(minutes: 5),
     '15 phút trước': const Duration(minutes: 15),
     '30 phút trước': const Duration(minutes: 30),
@@ -41,14 +43,25 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
     super.initState();
     initializeDateFormatting('vi_VN', null);
     _loadUserId();
-    _selectedReminder = _reminderOptions['15 phút trước'];
+
+    if (_isEditing) {
+      final todo = widget.todoToEdit!;
+      _titleController.text = todo.title;
+      _descriptionController.text = todo.description ?? '';
+      _startTime = todo.startTime;
+      _endTime = todo.endTime;
+    } else {
+      _selectedReminder = _reminderOptions['15 phút trước'];
+    }
   }
 
   void _loadUserId() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _userId = prefs.getInt('userId');
-    });
+    if (mounted) {
+      setState(() {
+        _userId = prefs.getInt('userId');
+      });
+    }
   }
 
   @override
@@ -58,33 +71,22 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
     super.dispose();
   }
 
-  void _saveTodo() async {
-    if (_userId == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không tìm thấy người dùng')),
-      );
-      return;
+  void _handleSave() {
+    if (_isEditing) {
+      _updateTodo();
+    } else {
+      _createTodo();
     }
+  }
 
+  Future<void> _createTodo() async {
     final title = _titleController.text;
-    final description = _descriptionController.text;
-
     if (title.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập tiêu đề cho nhiệm vụ.')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng nhập tiêu đề.')));
       return;
     }
 
-    if (_endTime.isBefore(_startTime)) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lỗi: Thời gian kết thúc phải sau thời gian bắt đầu.')),
-      );
-      return;
-    }
+    DateTime remindAtTime = _selectedReminder != null ? _startTime.subtract(_selectedReminder!) : DateTime(1, 1, 1);
 
     final response = await http.post(
       Uri.parse("http://172.16.7.146:5056/Todo/create"),
@@ -92,37 +94,65 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
       body: jsonEncode({
         "userId": _userId,
         "title": title,
-        "description": description,
+        "description": _descriptionController.text,
         "startTime": _startTime.toIso8601String(),
-        "endTime": _endTime.toIso8601String()
+        "endTime": _endTime.toIso8601String(),
+        "remindAt": remindAtTime.toIso8601String(),
       }),
     );
 
     if (response.statusCode == 200 && mounted) {
-      print("✅ Tạo thành công: ${response.body}");
-
-      if (_selectedReminder != null && _selectedReminder != Duration.zero) {
-        final notificationTime = _startTime.subtract(_selectedReminder!);
-        if (notificationTime.isAfter(DateTime.now())) {
-          final int notificationId = Random().nextInt(100000);
-          await NotificationService().scheduleNotification(
-            id: notificationId,
-            title: 'Sắp đến giờ làm nhiệm vụ!',
-            body: title,
-            scheduledTime: notificationTime,
-          );
-          print("✅ Đã lên lịch thông báo lúc: $notificationTime");
-        } else {
-          print("⚠️ Thời gian nhắc nhở đã ở trong quá khứ, không lên lịch.");
-        }
+      if (_selectedReminder != null && remindAtTime.isAfter(DateTime.now())) {
+        await NotificationService().scheduleNotification(
+          id: Random().nextInt(100000),
+          title: 'Lời nhắc: $title',
+          body: 'Nhiệm vụ của bạn sẽ bắt đầu lúc ${DateFormat('HH:mm').format(_startTime)}.',
+          scheduledTime: remindAtTime,
+        );
       }
-
-      Navigator.of(context).pop();
-    } else {
-      print("❌ Lỗi: ${response.statusCode} - ${response.body}");
+      Navigator.of(context).pop(true);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lưu thất bại: ${response.body}')));
     }
   }
 
+  Future<void> _updateTodo() async {
+    final originalTodo = widget.todoToEdit!;
+    final patchDoc = <Map<String, dynamic>>[];
+
+    if (_titleController.text != originalTodo.title) {
+      patchDoc.add({'op': 'replace', 'path': '/title', 'value': _titleController.text});
+    }
+    if (_descriptionController.text != (originalTodo.description ?? '')) {
+      patchDoc.add({'op': 'replace', 'path': '/description', 'value': _descriptionController.text});
+    }
+    if (_startTime != originalTodo.startTime) {
+      patchDoc.add({'op': 'replace', 'path': '/startTime', 'value': _startTime.toIso8601String()});
+    }
+    if (_endTime != originalTodo.endTime) {
+      patchDoc.add({'op': 'replace', 'path': '/endTime', 'value': _endTime.toIso8601String()});
+    }
+
+    if (patchDoc.isEmpty) {
+      Navigator.of(context).pop();
+      return;
+    }
+
+    final uri = Uri.parse('http://172.16.7.146:5056/Todo/update/${originalTodo.id}');
+    final response = await http.patch(
+      uri,
+      headers: {"Content-Type": "application/json-patch+json"},
+      body: jsonEncode(patchDoc),
+    );
+
+    if (response.statusCode == 200 && mounted) {
+      Navigator.of(context).pop(true);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cập nhật thất bại: ${response.body}')));
+    }
+  }
+
+  // --- CÁC HÀM BỊ THIẾU ĐÃ ĐƯỢC THÊM VÀO ĐÂY ---
   Future<void> _selectDate(BuildContext context, bool isStart) async {
     final DateTime initialDate = isStart ? _startTime : _endTime;
     final DateTime firstDate = DateTime.now().subtract(const Duration(days: 365));
@@ -242,11 +272,13 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
       },
     );
   }
+  // --- KẾT THÚC PHẦN THÊM VÀO ---
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: Text(_isEditing ? 'Sửa nhiệm vụ' : 'Thêm nhiệm vụ'),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.of(context).pop(),
@@ -255,7 +287,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
           Padding(
             padding: const EdgeInsets.only(right: 16.0, top: 8, bottom: 8),
             child: ElevatedButton(
-              onPressed: _saveTodo,
+              onPressed: _handleSave,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
@@ -356,16 +388,16 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
       contentPadding: EdgeInsets.zero,
       leading: const Icon(Icons.notifications_outlined),
       title: const Text('Lời nhắc'),
-      trailing: DropdownButton<Duration>(
+      trailing: DropdownButton<Duration?>(
         value: _selectedReminder,
-        underline: Container(), // Bỏ gạch chân
+        underline: Container(),
         onChanged: (Duration? newValue) {
           setState(() {
             _selectedReminder = newValue;
           });
         },
-        items: _reminderOptions.entries.map<DropdownMenuItem<Duration>>((entry) {
-          return DropdownMenuItem<Duration>(
+        items: _reminderOptions.entries.map<DropdownMenuItem<Duration?>>((entry) {
+          return DropdownMenuItem<Duration?>(
             value: entry.value,
             child: Text(entry.key),
           );

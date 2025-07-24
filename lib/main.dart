@@ -114,6 +114,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
 
+  final GlobalKey<AddTodoScreenState> _addTodoScreenKey = GlobalKey();
+
   void _showAddOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -134,6 +136,13 @@ class _HomePageState extends State<HomePage> {
                     MaterialPageRoute(
                       builder: (context) => const TodoDetailScreen(),
                     ),
+                  ).then((result) {
+                    // 3. SỬ DỤNG KEY ĐỂ GỌI HÀM REFRESH
+                    // Nếu thêm mới thành công, dùng key để gọi hàm fetchTodos()
+                    if (result == true) {
+                      _addTodoScreenKey.currentState?.fetchTodos();
+                    }
+                  }
                   );
                 },
               ),
@@ -173,7 +182,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final List<Widget> pages = [
       CalendarScreen(),
-      AddTodoScreen(),
+      AddTodoScreen(key: _addTodoScreenKey),
       AddNoteScreen(),
       SettingsScreen(
         onThemeChanged: widget.onThemeChanged,
