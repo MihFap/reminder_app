@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import '../app_config.dart';
 // Import các file cần thiết
 import 'package:reminder_app/model/todo_model.dart';
 import 'package:reminder_app/screens/todo_detail.dart'; // Import màn hình chi tiết
@@ -57,7 +57,7 @@ class AddTodoScreenState extends State<AddTodoScreen> {
     }
 
     try {
-      final uri = Uri.parse('http://172.16.7.146:5056/Todo/get?userId=$_userId');
+      final uri = Uri.parse("${AppConfig.baseUrl}/Todo/get?userId=$_userId");
       final response = await http.get(uri);
 
       if (response.statusCode == 200) {
@@ -118,7 +118,7 @@ class AddTodoScreenState extends State<AddTodoScreen> {
     final patchDoc = [{'op': 'replace', 'path': '/isCompleted', 'value': newStatus}];
 
     try {
-      final uri = Uri.parse("http://172.16.7.146:5056/Todo/update/${todo.id}");
+      final uri = Uri.parse("${AppConfig.baseUrl}/Todo/update/${todo.id}");
       final response = await http.patch(
         uri,
         headers: {"Content-Type": "application/json-patch+json"},
@@ -178,7 +178,7 @@ class AddTodoScreenState extends State<AddTodoScreen> {
               onPressed: () async {
                 Navigator.of(context).pop();
 
-                final uri = Uri.parse('http://172.16.7.146:5056/Todo/delete?id=${todo.id}');
+                final uri = Uri.parse("${AppConfig.baseUrl}/Todo/delete?id=${todo.id}");
                 final response = await http.delete(uri);
 
                 if (response.statusCode == 200 && mounted) {
@@ -218,18 +218,33 @@ class AddTodoScreenState extends State<AddTodoScreen> {
           ),
         ],
       ),
+      // --- THÊM NÚT FLOATING ACTION BUTTON TẠI ĐÂY ---
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Điều hướng đến màn hình chi tiết để tạo một công việc mới.
+          // Giả sử TodoDetailScreen có thể xử lý việc tạo mới khi không có todoToEdit được truyền vào.
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const TodoDetailScreen(),
+            ),
+          ).then((result) {
+            // Nếu màn hình chi tiết trả về `true` (nghĩa là đã lưu thành công),
+            // hãy tải lại danh sách công việc.
+            if (result == true) {
+              fetchTodos();
+            }
+          });
+        },
+        shape: const CircleBorder(),
+        backgroundColor: Colors.green, // Tùy chỉnh màu sắc cho phù hợp
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
     );
   }
 
   AppBar _buildAppBar() {
     return AppBar(
       title: const Text('Nhiệm vụ'),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.more_vert),
-          onPressed: () {},
-        ),
-      ],
     );
   }
 
@@ -449,6 +464,7 @@ class AddTodoScreenState extends State<AddTodoScreen> {
           ],
         ),
       ),
+
     );
   }
 }

@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:reminder_app/notification_service.dart';
 import 'package:reminder_app/model/todo_model.dart';
+import '../app_config.dart';
 
 class TodoDetailScreen extends StatefulWidget {
   final Todo? todoToEdit;
@@ -89,7 +90,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
     DateTime remindAtTime = _selectedReminder != null ? _startTime.subtract(_selectedReminder!) : DateTime(1, 1, 1);
 
     final response = await http.post(
-      Uri.parse("http://172.16.7.146:5056/Todo/create"),
+      Uri.parse("${AppConfig.baseUrl}/Todo/create"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "userId": _userId,
@@ -138,7 +139,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
       return;
     }
 
-    final uri = Uri.parse('http://172.16.7.146:5056/Todo/update/${originalTodo.id}');
+    final uri = Uri.parse("${AppConfig.baseUrl}/Todo/update/${originalTodo.id}");
     final response = await http.patch(
       uri,
       headers: {"Content-Type": "application/json-patch+json"},

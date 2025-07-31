@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-
+import '../app_config.dart';
 class LoginScreen extends StatelessWidget {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
@@ -24,7 +24,7 @@ class LoginScreen extends StatelessWidget {
 
     try {
       final response = await http.post(
-        Uri.parse("http://172.16.7.146:5056/Auth/login"),
+        Uri.parse("${AppConfig.baseUrl}/Auth/login"),
         headers: {
           "Content-Type": "application/json"
         },

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../model/todo_model.dart'; // Đảm bảo đường dẫn này đúng
 import 'package:shared_preferences/shared_preferences.dart';
+import '../app_config.dart';
 
 class CalendarScreen extends StatefulWidget {
   @override
@@ -29,9 +30,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _userId = prefs.getInt('userId');
     if (_userId != null) {
       try {
-        final todos = await fetchTodos(_userId!);
+        final allTodos = await fetchTodos(_userId!);
+
+        // 2. LỌC danh sách, chỉ giữ lại những công việc chưa hoàn thành
+        final incompleteTodos = allTodos.where((todo) => todo.isCompleted == false).toList();
+
+        // 3. Nhóm và cập nhật giao diện với danh sách đã được lọc
         setState(() {
-          _events = groupTodosByDate(todos);
+          _events = groupTodosByDate(incompleteTodos);
         });
       } catch (e) {
         // Xử lý lỗi nếu không fetch được
@@ -42,7 +48,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Future<List<Todo>> fetchTodos(int userId) async {
     final response = await http.get(
-      Uri.parse('http://192.168.1.13:5056/Todo/get?userId=$userId'),
+      Uri.parse("${AppConfig.baseUrl}/Todo/get?userId=$userId"),
       headers: {'accept': 'application/json'},
     );
 

@@ -1,5 +1,3 @@
-// lib/models/todo_model.dart
-
 import 'dart:convert';
 
 class Todo {
